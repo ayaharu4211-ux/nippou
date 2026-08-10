@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="現場日報">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1B3A63">
+<title>現場日報</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F1EEE4;
+  --surface:#FFFFFF;
+  --surface-alt:#FAF8F1;
+  --line:#E1DCC9;
+  --ink:#201E1A;
+  --ink-soft:#635D50;
+  --ink-dim:#8C8676;
+  --navy:#1B3A63;
+  --navy-deep:#12233F;
+  --amber:#D97B06;
+  --amber-soft:#FBEBD4;
+  --cyan:#0E7A72;
+  --danger:#B93434;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'Noto Sans JP',sans-serif;height:100%;overscroll-behavior-y:none;}
+h1,h2,h3{font-family:'Zen Kaku Gothic New',sans-serif;}
+button{font-family:inherit;}
+input,select,textarea{font-family:inherit;}
+:focus-visible{outline:3px solid var(--amber);outline-offset:2px;}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important;}}
+
+.app{max-width:600px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:
+    repeating-linear-gradient(0deg, rgba(27,58,99,.02) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(90deg, rgba(27,58,99,.02) 0 1px, transparent 1px 34px),
+    var(--bg);
+  position:relative;}
+
+.app-header{position:sticky;top:0;z-index:20;background:linear-gradient(160deg,var(--navy) 0%,var(--navy-deep) 100%);padding:calc(15px + var(--safe-top)) 18px 14px;}
+.app-header .row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.app-header h1{margin:0;font-size:20px;font-weight:900;letter-spacing:.05em;color:#fff;}
+.app-header h1 .accent{color:#FFAE3D;}
+.app-header .date-badge{font-family:'JetBrains Mono',monospace;font-size:12px;color:#FFD9A0;font-weight:700;}
+.app-header .sub{margin-top:3px;font-size:11.5px;color:#B7C3D6;}
+.rule{height:3px;background:linear-gradient(90deg,var(--amber) 0 50%, var(--cyan) 50% 100%);flex-shrink:0;}
+.cloud-badge{cursor:pointer;border:none;display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:999px;margin-top:7px;letter-spacing:.02em;}
+.cloud-badge .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.cb-online{background:rgba(255,255,255,.14);color:#9EE6C8;}
+.cb-online .dot{background:#4ADE80;}
+.cb-offline{background:rgba(255,255,255,.14);color:#FFD9A0;}
+.cb-offline .dot{background:#FFAE3D;}
+.cb-local{background:rgba(255,255,255,.14);color:#FFB3AC;}
+.cb-local .dot{background:#FF8A7D;}
+.setup-note{background:#FFF4E0;border:1.5px solid var(--amber);border-radius:13px;padding:14px;margin-bottom:14px;font-size:12.5px;line-height:1.75;color:#7A4503;display:none;}
+.setup-note.show{display:block;}
+.setup-note b{display:block;margin-bottom:5px;font-size:13px;}
+
+.main{flex:1;overflow-y:auto;padding:18px 14px calc(100px + var(--safe-bottom));-webkit-overflow-scrolling:touch;position:relative;z-index:1;}
+.view{display:none;}
+.view.active{display:block;animation:fade .18s ease;}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:17px;margin-bottom:14px;box-shadow:0 2px 10px rgba(27,58,99,.06);}
+.card h2{margin:0 0 13px;font-size:12.5px;font-weight:700;color:var(--navy);letter-spacing:.09em;display:flex;align-items:center;gap:8px;}
+.card h2::before{content:'';width:3px;height:13px;background:var(--amber);border-radius:2px;display:inline-block;flex-shrink:0;}
+.card h2 .note{font-weight:500;color:var(--ink-dim);letter-spacing:0;font-size:11px;}
+label.field-label{display:block;font-size:12.5px;font-weight:700;color:var(--ink-soft);margin:0 0 7px;}
+.field{margin-bottom:18px;}
+.field:last-child{margin-bottom:0;}
+
+input[type=text],input[type=date],input[type=number],textarea{width:100%;border:1.5px solid var(--line);background:var(--surface-alt);border-radius:11px;padding:12px 13px;font-size:16px;color:var(--ink);outline:none;transition:border-color .15s, box-shadow .15s;}
+input::placeholder,textarea::placeholder{color:var(--ink-dim);}
+input:focus,textarea:focus{border-color:var(--navy);background:#fff;box-shadow:0 0 0 3px rgba(27,58,99,.1);}
+textarea{min-height:76px;resize:vertical;line-height:1.6;}
+
+.site-wrap{position:relative;}
+.suggest{position:absolute;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1.5px solid var(--navy);border-radius:11px;box-shadow:0 8px 22px rgba(27,58,99,.16);z-index:40;max-height:210px;overflow-y:auto;display:none;}
+.suggest.show{display:block;}
+.suggest .s-head{font-size:10.5px;font-weight:700;color:var(--ink-dim);letter-spacing:.08em;padding:9px 13px 5px;}
+.suggest button{display:block;width:100%;text-align:left;border:none;background:none;padding:11px 13px;font-size:14.5px;color:var(--ink);border-top:1px solid var(--line);cursor:pointer;}
+.suggest button:active{background:var(--amber-soft);}
+
+.chip-row{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{border:1.5px solid var(--line);background:var(--surface-alt);border-radius:10px;padding:11px 17px;font-size:15px;font-weight:700;color:var(--ink-soft);cursor:pointer;user-select:none;font-family:'JetBrains Mono',monospace;}
+.chip.active{background:var(--navy);border-color:var(--navy);color:#fff;}
+.manpower-input-row{display:flex;align-items:center;gap:10px;margin-top:12px;}
+.manpower-input-row input{width:120px;text-align:center;font-weight:700;font-size:19px;font-family:'JetBrains Mono',monospace;}
+.manpower-input-row .unit{font-size:12.5px;color:var(--ink-soft);font-weight:700;}
+
+.worktype-chip{position:relative;border:1.5px solid;border-radius:999px;padding:10px 17px;font-size:14px;font-weight:700;cursor:pointer;background:#fff;}
+.worktype-chip.active{color:#fff !important;}
+.worktype-chip.add-chip{border-style:dashed;border-color:var(--cyan);color:var(--cyan);background:transparent;}
+
+.add-inline{display:none;gap:8px;margin-top:11px;}
+.add-inline.show{display:flex;}
+.add-inline input{flex:1;}
+.add-inline button{border:none;background:var(--cyan);color:#fff;border-radius:10px;padding:0 18px;font-weight:700;font-size:14px;cursor:pointer;}
+.selected-hint{font-size:11.5px;color:var(--ink-soft);margin-top:12px;line-height:1.6;}
+.manage-link{background:none;border:none;color:var(--cyan);font-size:11.5px;font-weight:700;padding:0;margin-top:8px;cursor:pointer;text-decoration:underline;}
+
+.save-btn{width:100%;background:linear-gradient(135deg,var(--amber) 0%, #B36406 100%);color:#fff;border:none;border-radius:13px;padding:16px;font-size:16px;font-weight:900;letter-spacing:.04em;cursor:pointer;margin-top:6px;box-shadow:0 5px 16px rgba(217,123,6,.28);}
+.save-btn:active{transform:translateY(1px);}
+.cancel-btn{width:100%;background:none;border:1.5px solid var(--line);color:var(--ink-soft);border-radius:13px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;margin-top:9px;}
+.edit-banner{display:none;background:var(--amber-soft);border:1.5px solid var(--amber);border-radius:12px;padding:11px 13px;font-size:12.5px;font-weight:700;color:#8A4E04;margin-bottom:14px;}
+.edit-banner.show{display:block;}
+
+.hint{font-size:11.5px;color:var(--ink-soft);line-height:1.7;margin-top:11px;padding:11px 13px;background:var(--amber-soft);border-radius:11px;border-left:3px solid var(--amber);}
+
+.toast{position:fixed;left:50%;bottom:calc(94px + var(--safe-bottom));transform:translateX(-50%) translateY(20px);background:var(--navy-deep);color:#fff;padding:12px 22px;border-radius:999px;font-size:13.5px;font-weight:700;opacity:0;transition:.25s;z-index:70;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:88%;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.toolbar{display:flex;gap:8px;margin-bottom:14px;}
+.tbtn{flex:1;background:var(--surface);border:1.5px solid var(--line);border-radius:11px;padding:12px 6px;font-size:12.5px;font-weight:700;color:var(--navy);display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;}
+.search-box{margin-bottom:14px;}
+
+.day-group{margin-bottom:20px;}
+.day-group .day-title{font-size:12.5px;font-weight:700;color:var(--navy);margin:0 0 9px 2px;letter-spacing:.06em;font-family:'JetBrains Mono',monospace;display:flex;justify-content:space-between;}
+.day-group .day-title .dsum{color:var(--ink-soft);}
+.entry-row{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 15px;margin-bottom:9px;box-shadow:0 1px 4px rgba(27,58,99,.05);}
+.entry-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.entry-row .site{font-weight:700;font-size:15px;color:var(--ink);word-break:break-word;line-height:1.4;flex:1;min-width:0;}
+.entry-row .mp{font-weight:800;font-size:20px;color:var(--navy);flex-shrink:0;font-family:'JetBrains Mono',monospace;line-height:1.1;white-space:nowrap;}
+.entry-row .mp .u{font-size:11px;font-weight:700;color:var(--ink-soft);font-family:'Noto Sans JP',sans-serif;margin-left:2px;}
+.entry-row .memo{font-size:12.5px;color:var(--ink-soft);margin-top:9px;white-space:pre-wrap;line-height:1.6;padding-left:10px;border-left:2px solid var(--line);}
+.tag-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;}
+.mini-tag{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:4px 11px;border-radius:999px;color:#fff;white-space:nowrap;}
+.row-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;padding-top:11px;border-top:1px solid var(--line);}
+.icon-btn{min-width:74px;padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:var(--surface-alt);font-size:12.5px;font-weight:700;cursor:pointer;color:var(--ink-soft);white-space:nowrap;writing-mode:horizontal-tb;}
+.icon-btn.del{background:#F8E8E8;border-color:#EBD2D2;color:var(--danger);}
+
+.empty{text-align:center;padding:56px 20px;}
+.empty .big{font-size:12px;letter-spacing:.28em;font-family:'JetBrains Mono',monospace;margin-bottom:10px;color:var(--ink-dim);}
+.empty p{font-size:13.5px;line-height:1.7;margin:0;color:var(--ink-soft);}
+
+.period-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;margin-bottom:12px;overflow:hidden;}
+.period-head{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:10px;}
+.period-head .range{font-size:13.5px;font-weight:700;color:var(--navy);}
+.period-head .range small{display:block;font-weight:500;color:var(--ink-dim);font-size:11px;margin-top:2px;}
+.period-head .total{font-size:17px;font-weight:800;color:var(--navy);font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+.period-head .total .u{font-size:10px;color:var(--ink-soft);font-weight:700;font-family:'Noto Sans JP',sans-serif;}
+.period-body{padding:2px 16px 15px;display:none;}
+.period-card.open .period-body{display:block;}
+.period-card.open > .period-head .chevron{transform:rotate(180deg);}
+.chevron{transition:transform .2s;color:var(--ink-dim);flex-shrink:0;}
+.section-label{font-size:11px;font-weight:700;color:var(--ink-dim);letter-spacing:.09em;margin:16px 0 4px;}
+.site-row{padding:12px 0;border-top:1px solid var(--line);}
+.site-row:first-of-type{border-top:none;}
+.sr-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.site-row .site-name{font-weight:700;font-size:14.5px;color:var(--ink);line-height:1.4;flex:1;min-width:0;word-break:break-word;}
+.site-row .site-total{font-weight:800;color:var(--navy);font-size:14.5px;font-family:'JetBrains Mono',monospace;white-space:nowrap;flex-shrink:0;}
+.period-footer{border-top:1px solid var(--line);margin-top:6px;padding-top:11px;display:flex;flex-wrap:wrap;gap:8px 14px;font-size:11.5px;color:var(--ink-soft);align-items:center;}
+.period-footer b{color:var(--ink);font-family:'JetBrains Mono',monospace;}
+
+.day-block{border:1px solid var(--line);border-radius:13px;margin-top:9px;overflow:hidden;background:#fff;}
+.day-block.open{border-color:var(--navy);box-shadow:0 2px 10px rgba(27,58,99,.1);}
+.day-list-row{display:flex;align-items:center;justify-content:space-between;padding:14px 14px;cursor:pointer;gap:10px;background:var(--surface-alt);border:none;width:100%;text-align:left;font-family:inherit;}
+.day-block.open .day-list-row{background:#EEF3FA;}
+.day-list-row .dl-left{display:flex;align-items:center;gap:9px;min-width:0;flex:1;}
+.day-list-row .dl-date{font-weight:700;font-size:14px;color:var(--ink);font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+.day-list-row .dl-count{font-size:11px;color:var(--ink-dim);white-space:nowrap;}
+.day-list-row .dl-right{display:flex;align-items:center;gap:9px;flex-shrink:0;}
+.day-list-row .dl-mp{font-weight:800;color:var(--navy);font-size:14px;font-family:'JetBrains Mono',monospace;}
+.day-detail{display:none;padding:4px 12px 13px;}
+.day-block.open .day-detail{display:block;}
+.day-block.open .chevron{transform:rotate(180deg);}
+.day-entry{background:var(--surface-alt);border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-top:8px;}
+.day-entry .de-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.day-entry .site{font-weight:700;font-size:14px;color:var(--ink);line-height:1.4;flex:1;min-width:0;word-break:break-word;}
+.day-entry .mp{font-weight:800;color:var(--navy);font-family:'JetBrains Mono',monospace;font-size:14px;white-space:nowrap;flex-shrink:0;}
+.day-entry .memo{font-size:12px;color:var(--ink-soft);margin-top:8px;white-space:pre-wrap;line-height:1.6;padding-left:9px;border-left:2px solid var(--line);}
+
+.tab-bar{position:fixed;left:0;right:0;bottom:0;max-width:600px;margin:0 auto;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:var(--safe-bottom);z-index:30;box-shadow:0 -2px 12px rgba(27,58,99,.07);}
+.tab-btn{flex:1;background:none;border:none;padding:11px 4px 9px;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink-dim);cursor:pointer;}
+.tab-btn svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;}
+.tab-btn span{font-size:10.5px;font-weight:700;}
+.tab-btn.active{color:var(--navy);}
+.tab-btn.active svg{stroke:var(--amber);}
+
+.modal{position:fixed;inset:0;background:rgba(18,35,63,.55);z-index:80;display:none;align-items:flex-end;justify-content:center;}
+.modal.show{display:flex;}
+.modal-inner{background:#fff;width:100%;max-width:600px;border-radius:20px 20px 0 0;padding:20px 18px calc(24px + var(--safe-bottom));max-height:78vh;overflow-y:auto;}
+.modal-inner h3{margin:0 0 4px;font-size:16px;font-weight:900;color:var(--navy);}
+.modal-inner .msub{font-size:11.5px;color:var(--ink-soft);margin-bottom:14px;line-height:1.6;}
+.mt-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line);gap:10px;}
+.mt-row .mt-name{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;}
+.mt-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.mt-del{border:1px solid #EBD2D2;background:#F8E8E8;color:var(--danger);border-radius:9px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;}
+.mt-locked{font-size:11px;color:var(--ink-dim);}
+.modal-close{width:100%;background:var(--navy);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;margin-top:18px;cursor:pointer;}
+
+::-webkit-scrollbar{display:none;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="app-header">
+    <div class="row">
+      <h1>現場<span class="accent">日報</span></h1>
+      <div class="date-badge" id="headerDate"></div>
+    </div>
+    <div class="sub" id="headerSub">今日の作業を記録しましょう</div>
+    <div class="cloud-badge cb-local" id="cloudBadge"><span class="dot"></span><span id="cloudText">読み込み中</span></div>
+  </div>
+  <div class="rule"></div>
+
+  <div class="main">
+
+    <div class="view active" id="view-input">
+      <div class="setup-note" id="setupNote"><b>まだクラウド保存の設定が済んでいません</b>今は端末の中だけに保存されています。ファイル先頭の firebaseConfig に、Firebaseの設定を貼り付けると、ネット上に自動保存されるようになります。</div>
+      <div class="edit-banner" id="editBanner">編集中の記録があります。内容を直して「保存する」を押してください。</div>
+
+      <div class="card">
+        <h2>基本情報</h2>
+        <div class="field">
+          <label class="field-label" for="inDate">日付</label>
+          <input type="date" id="inDate">
+        </div>
+        <div class="field">
+          <label class="field-label" for="inSite">現場名</label>
+          <div class="site-wrap">
+            <input type="text" id="inSite" placeholder="例: ○○邸新築工事" autocomplete="off">
+            <div class="suggest" id="siteSuggest"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>作業人員(人工)</h2>
+        <div class="chip-row" id="manpowerChips"></div>
+        <div class="manpower-input-row">
+          <input type="number" id="inManpower" step="0.5" min="0" value="1" inputmode="decimal">
+          <span class="unit">人工</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>作業内容 <span class="note">複数えらべます</span></h2>
+        <div class="chip-row" id="worktypeChips"></div>
+        <div class="add-inline" id="addTypeForm">
+          <input type="text" id="newWorktype" placeholder="新しい作業内容名">
+          <button id="addWorktypeBtn" type="button">追加</button>
+        </div>
+        <div class="selected-hint" id="selectedHint"></div>
+        <button class="manage-link" id="manageTypesBtn" type="button">作業内容の項目を整理する</button>
+      </div>
+
+      <div class="card">
+        <h2>備考 <span class="note">任意</span></h2>
+        <textarea id="inMemo" placeholder="例: 午後から雨天のため中断。北面3階の外壁を先行。"></textarea>
+      </div>
+
+      <button class="save-btn" id="saveBtn" type="button">この内容で保存する</button>
+      <button class="cancel-btn" id="cancelEditBtn" type="button" style="display:none;">編集をやめる</button>
+      <div class="hint">クラウド設定が済んでいれば、記録は自動でネット上に保存されます。電波の悪い現場でもそのまま入力でき、繋がったときに自動で送信されます。念のため「履歴」タブからバックアップも取れます。</div>
+    </div>
+
+    <div class="view" id="view-history">
+      <div class="toolbar">
+        <button class="tbtn" id="exportBtn" type="button">バックアップ書き出し</button>
+        <button class="tbtn" id="importBtn" type="button">復元する</button>
+        <input type="file" id="importFile" accept="application/json,.json" style="display:none;">
+      </div>
+      <div class="search-box"><input type="text" id="searchInput" placeholder="現場名・作業内容・備考で絞り込む"></div>
+      <div id="historyList"></div>
+    </div>
+
+    <div class="view" id="view-week"><div id="weekList"></div></div>
+    <div class="view" id="view-month"><div id="monthList"></div></div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="input" type="button">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>入力</span>
+    </button>
+    <button class="tab-btn" data-tab="history" type="button">
+      <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h12"/></svg><span>履歴</span>
+    </button>
+    <button class="tab-btn" data-tab="week" type="button">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>週集計</span>
+    </button>
+    <button class="tab-btn" data-tab="month" type="button">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h.01M12 14h.01M16 14h.01"/></svg><span>月集計</span>
+    </button>
+  </div>
+</div>
+
+<div class="modal" id="typeModal">
+  <div class="modal-inner">
+    <h3>作業内容の項目</h3>
+    <div class="msub">使わなくなった項目は削除できます。すでに保存済みの記録に付いている項目名はそのまま残ります。</div>
+    <div id="typeManageList"></div>
+    <button class="modal-close" id="closeTypeModal" type="button">閉じる</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+/* ============================================================
+   ▼▼▼ ここに Firebase の設定を貼り付けてください ▼▼▼
+   Firebaseコンソール → プロジェクトの設定 → マイアプリ(ウェブ)
+   に表示される firebaseConfig の中身をそのまま置き換えます。
+   貼り付けるまでは、端末内だけの保存で動作します。
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyDbmKYUW4rbGr73P_aBpvliViCV1Y5AFWg",
+  authDomain: "nippou-cd76a.firebaseapp.com",
+  projectId: "nippou-cd76a",
+  storageBucket: "nippou-cd76a.firebasestorage.app",
+  messagingSenderId: "393338820088",
+  appId: "1:393338820088:web:a2c7610c2f2105bcc0720d"
+};
+/* ============================================================ */
+
+/* ================= ストレージ ================= */
+var STORE_KEY='genba_nippou_entries_v2';
+var OLD_STORE_KEY='genba_nippou_entries_v1';
+var WT_KEY='genba_nippou_worktypes_v1';
+var DEFAULT_WT=['通常工事','追加工事','補修工事'];
+var PALETTE=['#2F8F5B','#C1471E','#2563AE','#6A4FB0','#0E7A72','#A5730B','#B93470','#4B5563'];
+
+/* ---------- クラウド(Firestore)接続 ---------- */
+var CLOUD_READY = !!firebaseConfig.apiKey && firebaseConfig.apiKey.indexOf('ここに') < 0;
+var fb = null;
+
+function setCloudBadge(state, text){
+  var b=document.getElementById('cloudBadge');
+  b.className='cloud-badge '+state;
+  document.getElementById('cloudText').textContent=text;
+}
+
+async function initCloud(){
+  if(!CLOUD_READY){
+    setCloudBadge('cb-local','この端末だけに保存中');
+    document.getElementById('setupNote').classList.add('show');
+    return;
+  }
+  try{
+    const appMod = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+    const fs = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const app = appMod.initializeApp(firebaseConfig);
+    const db = fs.initializeFirestore(app, {
+      localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() })
+    });
+    fb = { fs: fs, db: db,
+      entriesCol: fs.collection(db,'nippou_entries'),
+      metaDoc: fs.doc(db,'nippou_meta','worktypes') };
+
+    setCloudBadge('cb-offline','接続を確認中…');
+    lastCloudError = { message:'初期確認中' };
+
+    // 記録の同期
+    fs.onSnapshot(fb.entriesCol, function(snap){
+      entries = snap.docs.map(function(d){ return normalizeEntry(d.data()); });
+      localStorage.setItem(STORE_KEY, JSON.stringify(entries)); // 予備の控え
+      if(!snap.metadata.fromCache){
+        lastCloudError = null;
+        setCloudBadge('cb-online','クラウド保存中');
+      }else if(lastCloudError !== null){
+        setCloudBadge('cb-offline','オフライン(あとで自動保存)');
+      }
+      refreshHeader(); renderHistory(); renderWeek(); renderMonth();
+    }, function(err){
+      console.error(err);
+      setCloudBadge('cb-local','クラウドに繋がりません(端末保存)');
+    });
+
+    // 作業内容リストの同期
+    fs.onSnapshot(fb.metaDoc, function(d){
+      if(d.exists() && Array.isArray(d.data().list) && d.data().list.length){
+        worktypes = d.data().list;
+        localStorage.setItem(WT_KEY, JSON.stringify(worktypes));
+        renderWorktypeChips();
+      }
+    });
+
+    await migrateLocalToCloud();
+    await verifyCloud();
+  }catch(err){
+    console.error(err);
+    lastCloudError = err;
+    setCloudBadge('cb-local','接続できません(タップで詳細)');
+  }
+}
+
+/* サーバーに実際に届くか確かめる */
+var lastCloudError = null;
+async function verifyCloud(){
+  if(!fb) return;
+  try{
+    await fb.fs.getDocs(fb.fs.query(fb.entriesCol, fb.fs.limit(1)));
+    lastCloudError = null;
+    setCloudBadge('cb-online','クラウド保存中');
+  }catch(err){
+    console.error(err);
+    lastCloudError = err;
+    setCloudBadge('cb-offline','未接続(タップで再確認)');
+  }
+}
+
+/* バッジをタップしたら再確認・原因表示 */
+document.getElementById('cloudBadge').addEventListener('click', function(){
+  if(!CLOUD_READY){ alert('Firebaseの設定がまだ入っていません。'); return; }
+  if(!fb){ alert('Firebaseの読み込みに失敗しています。通信状態を確認して、画面を再読み込みしてください。'); return; }
+  if(lastCloudError){
+    alert('クラウドに接続できていません。\n\n原因: '+(lastCloudError.code||lastCloudError.message||lastCloudError)+
+      '\n\nよくある原因:\n・Firestoreのルールが「公開」になっていない\n・ルールを書き換えたあと「公開」ボタンを押していない\n・電波が届いていない');
+  }
+  setCloudBadge('cb-offline','確認中…');
+  verifyCloud();
+});
+
+/* 端末に残っている記録を、クラウドが空のときだけ引き上げる */
+async function migrateLocalToCloud(){
+  if(!fb) return;
+  if(localStorage.getItem('genba_nippou_migrated')) return;
+  var local = [];
+  try{
+    var raw = localStorage.getItem(STORE_KEY) || localStorage.getItem(OLD_STORE_KEY);
+    if(raw) local = JSON.parse(raw).map(normalizeEntry);
+  }catch(e){}
+  if(!local.length){ localStorage.setItem('genba_nippou_migrated','1'); return; }
+  try{
+    var snap = await fb.fs.getDocs(fb.entriesCol);
+    if(snap.size === 0){
+      for(var i=0;i<local.length;i++){
+        await fb.fs.setDoc(fb.fs.doc(fb.entriesCol, local[i].id), local[i]);
+      }
+      showToast('これまでの'+local.length+'件をクラウドに移しました');
+    }
+    localStorage.setItem('genba_nippou_migrated','1');
+  }catch(e){ console.error(e); }
+}
+
+/* ---------- 読み書き(クラウド優先・失敗時は端末) ---------- */
+function normalizeEntry(e){
+  var types = Array.isArray(e.worktypes) ? e.worktypes.slice()
+            : (e.worktype ? [e.worktype] : []);
+  if(!types.length) types=['通常工事'];
+  return {
+    id: e.id || (Date.now()+'-'+Math.random().toString(36).slice(2,7)),
+    date: e.date || todayStr(),
+    site: String(e.site||'').trim() || '(現場名なし)',
+    manpower: (typeof e.manpower==='number' && isFinite(e.manpower)) ? e.manpower : parseFloat(e.manpower)||0,
+    worktypes: types,
+    memo: e.memo || ''
+  };
+}
+function loadEntries(){
+  try{
+    var raw = localStorage.getItem(STORE_KEY);
+    if(raw){ return JSON.parse(raw).map(normalizeEntry); }
+    var old = localStorage.getItem(OLD_STORE_KEY);
+    if(old){
+      var migrated = JSON.parse(old).map(normalizeEntry);
+      localStorage.setItem(STORE_KEY, JSON.stringify(migrated));
+      return migrated;
+    }
+    return [];
+  }catch(err){ return []; }
+}
+function saveLocal(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(entries)); }catch(err){}
+}
+function putEntry(entry){
+  saveLocal();
+  if(fb){ fb.fs.setDoc(fb.fs.doc(fb.entriesCol, entry.id), entry).catch(function(e){ console.error(e); }); }
+}
+function removeEntry(id){
+  saveLocal();
+  if(fb){ fb.fs.deleteDoc(fb.fs.doc(fb.entriesCol, id)).catch(function(e){ console.error(e); }); }
+}
+function loadWorktypes(){
+  try{
+    var w = JSON.parse(localStorage.getItem(WT_KEY)||'null');
+    return (w && w.length) ? w : DEFAULT_WT.slice();
+  }catch(err){ return DEFAULT_WT.slice(); }
+}
+function saveWorktypes(){
+  try{ localStorage.setItem(WT_KEY, JSON.stringify(worktypes)); }catch(err){}
+  if(fb){ fb.fs.setDoc(fb.metaDoc, { list: worktypes }).catch(function(e){ console.error(e); }); }
+}
+
+var entries = loadEntries();
+var worktypes = loadWorktypes();
+var selectedWorktypes = new Set([worktypes[0]]);
+var selectedManpower = 1;
+var editingId = null;
+
+/* 記録済みだが項目リストにない作業内容も色が付くよう補完 */
+var colorMemo = {};
+function colorForType(name){
+  if(colorMemo[name]) return colorMemo[name];
+  var idx = worktypes.indexOf(name);
+  if(idx < 0){
+    var h=0; for(var i=0;i<name.length;i++){ h=(h*31+name.charCodeAt(i))>>>0; }
+    idx = h;
+  }
+  colorMemo[name] = PALETTE[idx % PALETTE.length];
+  return colorMemo[name];
+}
+
+/* ================= 日付ユーティリティ ================= */
+function todayStr(){
+  var d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+var WD=['日','月','火','水','木','金','土'];
+function fmtDate(str){
+  var d=new Date(str+'T00:00:00');
+  if(isNaN(d)) return str;
+  return (d.getMonth()+1)+'/'+d.getDate()+'('+WD[d.getDay()]+')';
+}
+function trimNum(n){ return (Math.round(n*100)/100).toString(); }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+
+function refreshHeader(){
+  document.getElementById('headerDate').textContent = fmtDate(todayStr());
+  document.getElementById('headerSub').textContent = entries.length ? ('これまでの記録: '+entries.length+'件') : '今日の作業を記録しましょう';
+}
+
+/* ================= トースト ================= */
+var toastTimer;
+function showToast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){ t.classList.remove('show'); },1900);
+}
+
+/* ================= 入力: 人工 ================= */
+var MP_PRESETS=[0.5,1,1.5,2,2.5,3];
+function renderManpowerChips(){
+  var wrap=document.getElementById('manpowerChips');
+  wrap.innerHTML='';
+  MP_PRESETS.forEach(function(v){
+    var c=document.createElement('button');
+    c.type='button';
+    c.className='chip'+(v===selectedManpower?' active':'');
+    c.textContent=v;
+    c.setAttribute('aria-pressed', v===selectedManpower);
+    c.onclick=function(){ selectedManpower=v; document.getElementById('inManpower').value=v; renderManpowerChips(); };
+    wrap.appendChild(c);
+  });
+}
+document.getElementById('inManpower').addEventListener('input',function(e){
+  var v=parseFloat(e.target.value);
+  selectedManpower = isNaN(v)?null:v;
+  renderManpowerChips();
+});
+
+/* ================= 入力: 現場名サジェスト ================= */
+function siteHistoryList(){
+  var seen={}, out=[];
+  entries.slice().sort(function(a,b){ return b.date.localeCompare(a.date); }).forEach(function(e){
+    if(!seen[e.site]){ seen[e.site]=1; out.push(e.site); }
+  });
+  return out;
+}
+var siteInput=document.getElementById('inSite');
+var siteSuggest=document.getElementById('siteSuggest');
+function renderSuggest(){
+  var q=siteInput.value.trim();
+  var list=siteHistoryList().filter(function(s){ return !q || s.indexOf(q)>=0; }).slice(0,8);
+  if(!list.length){ siteSuggest.classList.remove('show'); return; }
+  siteSuggest.innerHTML='<div class="s-head">これまでの現場</div>'+
+    list.map(function(s){ return '<button type="button" data-site="'+escapeHtml(s)+'">'+escapeHtml(s)+'</button>'; }).join('');
+  siteSuggest.classList.add('show');
+  Array.prototype.forEach.call(siteSuggest.querySelectorAll('button'),function(b){
+    b.onclick=function(){ siteInput.value=b.getAttribute('data-site'); siteSuggest.classList.remove('show'); };
+  });
+}
+siteInput.addEventListener('focus',renderSuggest);
+siteInput.addEventListener('input',renderSuggest);
+document.addEventListener('click',function(e){
+  if(!siteSuggest.contains(e.target) && e.target!==siteInput) siteSuggest.classList.remove('show');
+});
+
+/* ================= 入力: 作業内容 ================= */
+function renderWorktypeChips(){
+  var wrap=document.getElementById('worktypeChips');
+  wrap.innerHTML='';
+  worktypes.forEach(function(w){
+    var color=colorForType(w);
+    var active = selectedWorktypes.has(w);
+    var c=document.createElement('button');
+    c.type='button';
+    c.className='worktype-chip'+(active?' active':'');
+    c.style.borderColor=color;
+    c.style.color= active ? '#fff' : color;
+    c.style.background = active ? color : '#fff';
+    c.textContent=w;
+    c.setAttribute('aria-pressed', active);
+    c.onclick=function(){
+      if(selectedWorktypes.has(w)) selectedWorktypes.delete(w);
+      else selectedWorktypes.add(w);
+      renderWorktypeChips();
+    };
+    wrap.appendChild(c);
+  });
+  var plus=document.createElement('button');
+  plus.type='button';
+  plus.className='worktype-chip add-chip';
+  plus.textContent='＋ 項目を作る';
+  plus.onclick=function(){
+    var f=document.getElementById('addTypeForm');
+    f.classList.toggle('show');
+    if(f.classList.contains('show')) document.getElementById('newWorktype').focus();
+  };
+  wrap.appendChild(plus);
+
+  var hint=document.getElementById('selectedHint');
+  hint.textContent = selectedWorktypes.size
+    ? '選択中: '+Array.from(selectedWorktypes).join(' / ')
+    : '作業内容が選ばれていません。1つ以上えらんでください。';
+  hint.style.color = selectedWorktypes.size ? '' : 'var(--danger)';
+}
+document.getElementById('addWorktypeBtn').onclick=function(){
+  var inp=document.getElementById('newWorktype');
+  var v=inp.value.trim();
+  if(!v){ showToast('項目名を入力してください'); return; }
+  if(worktypes.indexOf(v)<0){ worktypes.push(v); saveWorktypes(); }
+  selectedWorktypes.add(v);
+  inp.value='';
+  document.getElementById('addTypeForm').classList.remove('show');
+  renderWorktypeChips();
+  showToast('「'+v+'」を追加しました');
+};
+document.getElementById('newWorktype').addEventListener('keydown',function(e){
+  if(e.key==='Enter'){ e.preventDefault(); document.getElementById('addWorktypeBtn').click(); }
+});
+
+/* 項目の整理モーダル */
+var typeModal=document.getElementById('typeModal');
+function renderTypeManage(){
+  var box=document.getElementById('typeManageList');
+  box.innerHTML = worktypes.map(function(w){
+    var used = entries.filter(function(e){ return e.worktypes.indexOf(w)>=0; }).length;
+    var locked = worktypes.length<=1;
+    return '<div class="mt-row"><div class="mt-name"><span class="mt-dot" style="background:'+colorForType(w)+'"></span>'+escapeHtml(w)+
+      '<span class="mt-locked">'+(used?used+'件で使用中':'未使用')+'</span></div>'+
+      (locked ? '<span class="mt-locked">削除不可</span>' : '<button class="mt-del" type="button" data-w="'+escapeHtml(w)+'">削除</button>')+'</div>';
+  }).join('');
+  Array.prototype.forEach.call(box.querySelectorAll('.mt-del'),function(b){
+    b.onclick=function(){
+      var w=b.getAttribute('data-w');
+      if(!confirm('「'+w+'」を項目リストから削除しますか?\n保存済みの記録の表示はそのまま残ります。')) return;
+      worktypes = worktypes.filter(function(x){ return x!==w; });
+      saveWorktypes();
+      selectedWorktypes.delete(w);
+      if(selectedWorktypes.size===0) selectedWorktypes.add(worktypes[0]);
+      renderWorktypeChips(); renderTypeManage();
+    };
+  });
+}
+document.getElementById('manageTypesBtn').onclick=function(){ renderTypeManage(); typeModal.classList.add('show'); };
+document.getElementById('closeTypeModal').onclick=function(){ typeModal.classList.remove('show'); };
+typeModal.onclick=function(e){ if(e.target===typeModal) typeModal.classList.remove('show'); };
+
+/* ================= 保存 / 編集 ================= */
+function resetForm(){
+  editingId=null;
+  document.getElementById('inSite').value='';
+  document.getElementById('inMemo').value='';
+  document.getElementById('inDate').value=todayStr();
+  document.getElementById('inManpower').value=1;
+  selectedManpower=1;
+  selectedWorktypes=new Set([worktypes[0]]);
+  document.getElementById('editBanner').classList.remove('show');
+  document.getElementById('cancelEditBtn').style.display='none';
+  document.getElementById('saveBtn').textContent='この内容で保存する';
+  renderManpowerChips(); renderWorktypeChips();
+}
+document.getElementById('cancelEditBtn').onclick=function(){ resetForm(); showToast('編集をやめました'); };
+
+function startEdit(id){
+  var e = entries.filter(function(x){ return x.id===id; })[0];
+  if(!e) return;
+  editingId=id;
+  document.getElementById('inDate').value=e.date;
+  document.getElementById('inSite').value=e.site;
+  document.getElementById('inManpower').value=e.manpower;
+  document.getElementById('inMemo').value=e.memo||'';
+  selectedManpower=e.manpower;
+  selectedWorktypes=new Set(e.worktypes);
+  e.worktypes.forEach(function(w){ if(worktypes.indexOf(w)<0){ worktypes.push(w); } });
+  saveWorktypes();
+  document.getElementById('editBanner').classList.add('show');
+  document.getElementById('cancelEditBtn').style.display='block';
+  document.getElementById('saveBtn').textContent='この内容で上書き保存する';
+  renderManpowerChips(); renderWorktypeChips();
+  switchTab('input');
+  document.querySelector('.main').scrollTop=0;
+}
+
+document.getElementById('saveBtn').onclick=function(){
+  var date=document.getElementById('inDate').value || todayStr();
+  var site=document.getElementById('inSite').value.trim();
+  var mp=parseFloat(document.getElementById('inManpower').value);
+  var memo=document.getElementById('inMemo').value.trim();
+  if(!site){ showToast('現場名を入力してください'); siteInput.focus(); return; }
+  if(!mp || mp<=0){ showToast('作業人員を入力してください'); return; }
+  if(selectedWorktypes.size===0){ showToast('作業内容を1つ以上えらんでください'); return; }
+
+  if(editingId){
+    var upd={id:editingId, date:date, site:site, manpower:mp, worktypes:Array.from(selectedWorktypes), memo:memo};
+    entries = entries.map(function(e){ return e.id===editingId ? upd : e; });
+    putEntry(upd); resetForm(); showToast('上書き保存しました');
+  }else{
+    var neu={id:Date.now()+'-'+Math.random().toString(36).slice(2,7), date:date, site:site, manpower:mp, worktypes:Array.from(selectedWorktypes), memo:memo};
+    entries.push(neu);
+    putEntry(neu);
+    var keepDate=date;
+    resetForm();
+    document.getElementById('inDate').value=keepDate;
+    showToast('保存しました');
+  }
+  refreshHeader();
+  renderHistory(); renderWeek(); renderMonth();
+};
+
+/* ================= 履歴 ================= */
+function tagsHtml(types){
+  return '<div class="tag-row">'+types.map(function(t){
+    return '<span class="mini-tag" style="background:'+colorForType(t)+'">'+escapeHtml(t)+'</span>';
+  }).join('')+'</div>';
+}
+function deleteEntry(id){
+  if(!confirm('この記録を削除しますか?')) return;
+  entries = entries.filter(function(e){ return e.id!==id; });
+  removeEntry(id);
+  if(editingId===id) resetForm();
+  refreshHeader(); renderHistory(); renderWeek(); renderMonth();
+  showToast('削除しました');
+}
+document.getElementById('searchInput').addEventListener('input',renderHistory);
+
+function renderHistory(){
+  var list=document.getElementById('historyList');
+  var q=document.getElementById('searchInput').value.trim();
+  var data = q ? entries.filter(function(e){
+    return e.site.indexOf(q)>=0 || (e.memo||'').indexOf(q)>=0 || e.worktypes.some(function(t){ return t.indexOf(q)>=0; });
+  }) : entries;
+
+  if(!data.length){
+    list.innerHTML = q
+      ? '<div class="empty"><div class="big">NO MATCH</div><p>「'+escapeHtml(q)+'」に一致する記録はありません。<br>別のことばで探してみてください。</p></div>'
+      : '<div class="empty"><div class="big">NO RECORDS</div><p>まだ記録がありません。<br>「入力」タブから最初の日報を保存しましょう。</p></div>';
+    return;
+  }
+  var byDate={};
+  data.forEach(function(e){ (byDate[e.date]=byDate[e.date]||[]).push(e); });
+  var dates=Object.keys(byDate).sort(function(a,b){ return b.localeCompare(a); });
+  list.innerHTML = dates.map(function(date){
+    var dayTotal = byDate[date].reduce(function(s,e){ return s+e.manpower; },0);
+    var rows = byDate[date].map(function(e){
+      return '<div class="entry-row">'+
+        '<div class="entry-top"><div class="site">'+escapeHtml(e.site)+'</div>'+
+        '<div class="mp">'+trimNum(e.manpower)+'<span class="u">人工</span></div></div>'+
+        tagsHtml(e.worktypes)+
+        (e.memo?'<div class="memo">'+escapeHtml(e.memo)+'</div>':'')+
+        '<div class="row-actions">'+
+          '<button class="icon-btn" type="button" data-edit="'+e.id+'">編集する</button>'+
+          '<button class="icon-btn del" type="button" data-del="'+e.id+'">削除</button>'+
+        '</div></div>';
+    }).join('');
+    return '<div class="day-group"><div class="day-title"><span>'+fmtDate(date)+'</span><span class="dsum">計 '+trimNum(dayTotal)+'人工</span></div>'+rows+'</div>';
+  }).join('');
+
+  Array.prototype.forEach.call(list.querySelectorAll('[data-del]'),function(b){
+    b.onclick=function(){ deleteEntry(b.getAttribute('data-del')); };
+  });
+  Array.prototype.forEach.call(list.querySelectorAll('[data-edit]'),function(b){
+    b.onclick=function(){ startEdit(b.getAttribute('data-edit')); };
+  });
+}
+
+/* ================= 週・月 集計 ================= */
+function mondayOf(dateStr){
+  var d=new Date(dateStr+'T00:00:00');
+  var day=d.getDay();
+  var m=new Date(d);
+  m.setDate(d.getDate() - ((day+6)%7));
+  return m;
+}
+function toKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+function buildPeriodGroups(mode){
+  var groups={};
+  entries.forEach(function(e){
+    var key,label,sortKey;
+    if(mode==='week'){
+      var mon=mondayOf(e.date);
+      key=toKey(mon); sortKey=key;
+      var sun=new Date(mon); sun.setDate(mon.getDate()+6);
+      label=(mon.getMonth()+1)+'/'+mon.getDate()+'(月) 〜 '+(sun.getMonth()+1)+'/'+sun.getDate()+'(日)';
+    }else{
+      var d=new Date(e.date+'T00:00:00');
+      key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); sortKey=key;
+      label=d.getFullYear()+'年 '+(d.getMonth()+1)+'月';
+    }
+    if(!groups[key]) groups[key]={label:label, sortKey:sortKey, entries:[]};
+    groups[key].entries.push(e);
+  });
+  return Object.keys(groups).map(function(k){ return groups[k]; })
+    .sort(function(a,b){ return b.sortKey.localeCompare(a.sortKey); });
+}
+
+var openDays = {};
+function renderPeriodList(containerId, mode){
+  var container=document.getElementById(containerId);
+  var groups=buildPeriodGroups(mode);
+  if(!groups.length){
+    container.innerHTML='<div class="empty"><div class="big">NO DATA</div><p>'+(mode==='week'?'週':'月')+'ごとの集計はまだありません。<br>日報を保存すると、ここに自動でまとまります。</p></div>';
+    return;
+  }
+  container.innerHTML = groups.map(function(g,i){
+    var bySite={}, total=0, wtStats={}, dayCount={};
+    g.entries.forEach(function(e){
+      total+=e.manpower;
+      dayCount[e.date]=1;
+      e.worktypes.forEach(function(t){
+        if(!wtStats[t]) wtStats[t]={count:0, mp:0};
+        wtStats[t].count++; wtStats[t].mp+=e.manpower;
+      });
+      if(!bySite[e.site]) bySite[e.site]={total:0, types:{}, days:{}};
+      bySite[e.site].total+=e.manpower;
+      bySite[e.site].days[e.date]=1;
+      e.worktypes.forEach(function(t){ bySite[e.site].types[t]=1; });
+    });
+
+    var siteRows = Object.keys(bySite).map(function(s){ return [s,bySite[s]]; })
+      .sort(function(a,b){ return b[1].total-a[1].total; })
+      .map(function(p){
+        return '<div class="site-row"><div class="sr-top">'+
+          '<div class="site-name">'+escapeHtml(p[0])+'</div>'+
+          '<div class="site-total">'+trimNum(p[1].total)+'人工</div></div>'+tagsHtml(Object.keys(p[1].types))+'</div>';
+      }).join('');
+
+    var footer = Object.keys(wtStats).map(function(t){
+      return '<span><span class="mini-tag" style="background:'+colorForType(t)+'">'+escapeHtml(t)+'</span> <b>'+trimNum(wtStats[t].mp)+'</b>人工</span>';
+    }).join('');
+
+    var byDate={};
+    g.entries.forEach(function(e){ (byDate[e.date]=byDate[e.date]||[]).push(e); });
+    var dayRows = Object.keys(byDate).sort().map(function(date){
+      var dayTotal = byDate[date].reduce(function(s,e){ return s+e.manpower; },0);
+      var detail = byDate[date].map(function(e){
+        return '<div class="day-entry"><div class="de-top">'+
+          '<div class="site">'+escapeHtml(e.site)+'</div>'+
+          '<div class="mp">'+trimNum(e.manpower)+'人工</div></div>'+tagsHtml(e.worktypes)+
+          (e.memo?'<div class="memo">'+escapeHtml(e.memo)+'</div>':'')+'</div>';
+      }).join('');
+      var openKey = mode+':'+date;
+      var isOpen = openDays[openKey] ? ' open' : '';
+      return '<div class="day-block'+isOpen+'" data-openkey="'+openKey+'">'+
+        '<button class="day-list-row" type="button">'+
+        '<span class="dl-left"><span class="dl-date">'+fmtDate(date)+'</span>'+
+        '<span class="dl-count">'+byDate[date].length+'件</span></span>'+
+        '<span class="dl-right"><span class="dl-mp">'+trimNum(dayTotal)+'人工</span>'+
+        '<svg class="chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span></button>'+
+        '<div class="day-detail">'+detail+'</div></div>';
+    }).join('');
+
+    return '<div class="period-card'+(i===0?' open':'')+'">'+
+      '<div class="period-head" role="button" tabindex="0"><div class="range">'+g.label+
+        '<small>'+Object.keys(dayCount).length+'日・'+Object.keys(bySite).length+'現場・'+g.entries.length+'件</small></div>'+
+      '<div style="display:flex;align-items:center;gap:9px;"><div class="total">'+trimNum(total)+'<span class="u">人工</span></div>'+
+      '<svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div></div>'+
+      '<div class="period-body"><div class="section-label">現場ごとの合計</div>'+siteRows+
+      '<div class="period-footer">'+footer+'</div>'+
+      '<div class="section-label">日ごとの記録  ─  日付を押すと作業内容が開きます</div>'+dayRows+'</div></div>';
+  }).join('');
+
+  Array.prototype.forEach.call(container.querySelectorAll('.period-head'),function(h){
+    var toggle=function(){ h.parentElement.classList.toggle('open'); };
+    h.onclick=toggle;
+    h.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } };
+  });
+  Array.prototype.forEach.call(container.querySelectorAll('.day-list-row'),function(row){
+    row.addEventListener('click',function(e){
+      e.stopPropagation();
+      var block=row.parentElement;
+      var key=block.getAttribute('data-openkey');
+      block.classList.toggle('open');
+      if(block.classList.contains('open')) openDays[key]=1; else delete openDays[key];
+    });
+  });
+}
+function renderWeek(){ renderPeriodList('weekList','week'); }
+function renderMonth(){ renderPeriodList('monthList','month'); }
+
+/* ================= バックアップ ================= */
+document.getElementById('exportBtn').onclick=function(){
+  if(!entries.length){ showToast('書き出す記録がまだありません'); return; }
+  var data={ app:'genba-nippou', version:2, exportedAt:new Date().toISOString(), entries:entries, worktypes:worktypes };
+  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download='現場日報_バックアップ_'+todayStr()+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+  showToast('バックアップを書き出しました');
+};
+document.getElementById('importBtn').onclick=function(){ document.getElementById('importFile').click(); };
+document.getElementById('importFile').onchange=function(ev){
+  var file=ev.target.files[0];
+  if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(re){
+    try{
+      var data=JSON.parse(re.target.result);
+      if(!Array.isArray(data.entries)) throw new Error('形式が違います');
+      var incoming = data.entries.map(normalizeEntry);
+      var add = confirm('OK: 今のデータに追加して復元\nキャンセル: 今のデータを置き換えて復元');
+      if(add){
+        var ids={}; entries.forEach(function(x){ ids[x.id]=1; });
+        var added=0;
+        incoming.forEach(function(x){ if(!ids[x.id]){ entries.push(x); added++; } });
+        showToast(added+'件を追加しました');
+      }else{
+        entries = incoming;
+        showToast(incoming.length+'件で置き換えました');
+      }
+      if(Array.isArray(data.worktypes)){
+        data.worktypes.forEach(function(w){ if(worktypes.indexOf(w)<0) worktypes.push(w); });
+      }
+      saveLocal(); saveWorktypes();
+      if(fb){ entries.forEach(function(x){ putEntry(x); }); }
+      refreshHeader(); renderHistory(); renderWeek(); renderMonth(); renderWorktypeChips();
+    }catch(err){
+      alert('読み込みに失敗しました。このアプリで書き出したバックアップファイルか確認してください。');
+    }
+    ev.target.value='';
+  };
+  reader.readAsText(file);
+};
+
+/* ================= タブ ================= */
+function switchTab(name){
+  Array.prototype.forEach.call(document.querySelectorAll('.tab-btn'),function(b){
+    b.classList.toggle('active', b.getAttribute('data-tab')===name);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.view'),function(v){ v.classList.remove('active'); });
+  document.getElementById('view-'+name).classList.add('active');
+  if(name==='history') renderHistory();
+  if(name==='week') renderWeek();
+  if(name==='month') renderMonth();
+  document.querySelector('.main').scrollTop=0;
+}
+Array.prototype.forEach.call(document.querySelectorAll('.tab-btn'),function(btn){
+  btn.onclick=function(){ switchTab(btn.getAttribute('data-tab')); };
+});
+
+/* ================= 初期化 ================= */
+document.getElementById('inDate').value = todayStr();
+renderManpowerChips();
+renderWorktypeChips();
+refreshHeader();
+renderHistory();
+initCloud();
+</script>
+</body>
+</html>
